@@ -15,14 +15,14 @@ TIMES = {
 # testing DRAM
 DRAM = {
     'chips': {
-        'number': 8,
+        'number': 2,
         'capacity': 512, #MB
         'rows': 2,
         'banks': 8,
         'columns': 6
         },
     'times': TIMES,
-    'capacity': 0 
+    'capacity': 1 
     }
 
 # store the memory content provided by the simplescalar
