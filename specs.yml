@@ -1,0 +1,12 @@
+dram_1:
+    capacity: 1
+    chips:
+        number: 8
+        banks: 1
+        rows: 1
+        columns: 1
+        capacity: 512
+    times:
+        rp: 1
+        rcd: 1
+        cl: 1
