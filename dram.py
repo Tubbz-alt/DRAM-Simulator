@@ -30,7 +30,7 @@ DRAM = {
 MEMORY_CONTENT = []
 
 
-def check_params():
+def check_params(DRAM=DRAM):
     """
     # ./dram <dram_capacity> <chip number> <chip_capacity> <rows> <columns> <banks>
     """
@@ -46,6 +46,10 @@ def check_params():
             DRAM['chips']['rows'] = int(argv[4])
             DRAM['chips']['columns'] = int(argv[5])
             DRAM['chips']['banks'] = int(argv[6])
+
+    elif num_args == 2 and argv[1].split('.')[-1] == 'yml':
+        DRAM.clear()
+        DRAM.update(read_specs())
 
     elif num_args > 1:
         # incorrect value, or show help
