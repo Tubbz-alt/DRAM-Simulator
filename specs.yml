@@ -1,12 +1,25 @@
 dram_1:
     capacity: 1
     chips:
-        number: 8
+        number: 2
         banks: 1
         rows: 1
         columns: 1
         capacity: 512
     times:
-        rp: 1
-        rcd: 1
-        cl: 1
+        RP: 1
+        RCD: 1
+        CL: 1
+
+dram_2:
+    capacity: 2
+    chips:
+        number: 2
+        banks: 1
+        rows: 1
+        columns: 1
+        capacity: 1024
+    times:
+        RP: 1
+        RCD: 1
+        CL: 1
