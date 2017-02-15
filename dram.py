@@ -2,6 +2,7 @@
 
 import sys
 from math import log2
+from yaml import load
 from Chip import *
 
 
@@ -134,11 +135,15 @@ def read_memory(path):
     memory.closed
 
 
-def read_specs(specs_file):
-    with open(specs_file, 'r') as specs:
-        for line in [line.split() for line in specs]:
-            print(line)
+def read_specs(path='specs.yml'):
+    dram = None
+    with open(path, 'r') as specs:
+        data = load(specs)
+        # we expect just one dram item in file
+        dram = [data[item] for item in data][0]
+
     specs.close
+    return dram
 
 
 if __name__ == '__main__':
