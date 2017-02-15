@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import sys
+from sys import argv, exit
 from math import log2
 from yaml import load
 from Chip import *
@@ -35,17 +35,17 @@ def check_params():
     # ./dram <dram_capacity> <chip number> <chip_capacity> <rows> <columns> <banks>
     """
 
-    num_args = len(sys.argv)
+    num_args = len(argv)
 
     if num_args == 7:
-        DRAM['capacity'] = int(sys.argv[1])
-        chips = int(sys.argv[2])
+        DRAM['capacity'] = int(argv[1])
+        chips = int(argv[2])
         for chip in range(chips):
             DRAM['chips']['number'] = chips
-            DRAM['chips']['capacity'] = int(sys.argv[3])
-            DRAM['chips']['rows'] = int(sys.argv[4])
-            DRAM['chips']['columns'] = int(sys.argv[5])
-            DRAM['chips']['banks'] = int(sys.argv[6])
+            DRAM['chips']['capacity'] = int(argv[3])
+            DRAM['chips']['rows'] = int(argv[4])
+            DRAM['chips']['columns'] = int(argv[5])
+            DRAM['chips']['banks'] = int(argv[6])
 
     elif num_args > 1:
         # incorrect value, or show help
@@ -59,7 +59,7 @@ def check_params():
         \nWARNING:
         * Every value must be positive pair integer
         * DRAM capacity must be equal to total chips capacity"""
-        sys.exit(help_string)
+        exit(help_string)
 
 
 def ok_specs(DRAM=DRAM):
@@ -153,4 +153,4 @@ if __name__ == '__main__':
         print("Memory content: {mc}\nDRAM {d}".format(mc=MEMORY_CONTENT, d=DRAM))
     else:
         chips_capacity = DRAM['chips']['number'] * DRAM['chips']['capacity']
-        sys.exit("ERROR: Chips capacity ({c}MB) not compatible with DRAM capacity ({d}GB)".format(c=chips_capacity, d=DRAM['capacity']))
+        exit("ERROR: Chips capacity ({c}MB) not compatible with DRAM capacity ({d}GB)".format(c=chips_capacity, d=DRAM['capacity']))
