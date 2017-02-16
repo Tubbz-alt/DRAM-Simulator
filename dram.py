@@ -161,7 +161,9 @@ def read_memory(path):
             mode = line[0]
             address = bit_transform(line[1])
             now = line[2]
-            MEMORY_CONTENT.append([mode,address,now])
+            MEMORY_CONTENT.append(mode)
+            MEMORY_CONTENT.append(address)
+            MEMORY_CONTENT.append(now)
 
     memory.closed
 
