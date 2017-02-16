@@ -67,17 +67,49 @@ def ok_specs(DRAM=DRAM):
     Of a given DRAM dictionary checks if the specs are correct comparing
     the total DRAM capacity with the total chips' capacity.
 
-
     DRAM: Optional, Dictionary
         The DRAM specification
-        
+
     Returns
     boolean
         Wheter the chips capacity equals total dram capacity
     """
 
+    def positive_integers(elements):
+        """Returns if all given values of a list are of integer type
+
+        maps a list of elements to its element's type: [type, type, ...]
+        the filter the mapped list to get if every element is equal to type(1) (which is int)
+        if the length of the filter type it's equal to length of the first list, then
+        all elements are integers
+
+        Parameters
+        elements: list
+            list of elements to check its integerity
+
+        Return
+        boolean: All values passed by params are integer
+        """
+        types = list(map(lambda x: type(x) is type(1) and x > 0, elements))
+        return len(list(filter(lambda x: x is True, types))) == len(types)
+
+
+    message = None
+
+    # check if the DRAM has a proper specification
+    if not positive_integers(DRAM['chips'].values()):
+        message = "ERROR: Something in the chip specification is wrong"
+
+    # check if DRAM has proper times specification
+    if not positive_integers(DRAM['times'].values()):
+        message = "ERROR: Something in the DRAM times specification is wrong"
+
+    chips_capacity = DRAM['chips']['number'] * DRAM['chips']['capacity']
     # for the total chip capacity divide by 1024 to convert to GB
-    return DRAM['capacity'] == (DRAM['chips']['number'] * DRAM['chips']['capacity'])/1024
+    if (DRAM['capacity'] != chips_capacity/1024):
+        message = "ERROR: Chips capacity ({c}MB) not compatible with DRAM capacity ({d}GB)".format(c=chips_capacity, d=DRAM['capacity'])
+
+    return message is None, message
 
 
 def bit_transform(decimal_stream):
@@ -144,8 +176,8 @@ def read_specs(specs_file):
 if __name__ == '__main__':
     check_params()
     read_memory('memory_content.txt')
-    if ok_specs():
+    ok_condition, message = ok_specs()
+    if ok_condition:
         print("Memory content: {mc}\nDRAM {d}".format(mc=MEMORY_CONTENT, d=DRAM))
     else:
-        chips_capacity = DRAM['chips']['number'] * DRAM['chips']['capacity']
-        sys.exit("ERROR: Chips capacity ({c}MB) not compatible with DRAM capacity ({d}GB)".format(c=chips_capacity, d=DRAM['capacity']))
+        sys.exit(message)
