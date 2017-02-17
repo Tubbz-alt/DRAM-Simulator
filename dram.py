@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
-import sys
+from sys import argv, exit
 from math import log2
+from yaml import load
 from Chip import *
 
 
@@ -29,22 +30,26 @@ DRAM = {
 MEMORY_CONTENT = []
 
 
-def check_params():
+def check_params(DRAM=DRAM):
     """
     # ./dram <dram_capacity> <chip number> <chip_capacity> <rows> <columns> <banks>
     """
 
-    num_args = len(sys.argv)
+    num_args = len(argv)
 
     if num_args == 7:
-        DRAM['capacity'] = int(sys.argv[1])
-        chips = int(sys.argv[2])
+        DRAM['capacity'] = int(argv[1])
+        chips = int(argv[2])
         for chip in range(chips):
             DRAM['chips']['number'] = chips
-            DRAM['chips']['capacity'] = int(sys.argv[3])
-            DRAM['chips']['rows'] = int(sys.argv[4])
-            DRAM['chips']['columns'] = int(sys.argv[5])
-            DRAM['chips']['banks'] = int(sys.argv[6])
+            DRAM['chips']['capacity'] = int(argv[3])
+            DRAM['chips']['rows'] = int(argv[4])
+            DRAM['chips']['columns'] = int(argv[5])
+            DRAM['chips']['banks'] = int(argv[6])
+
+    elif num_args == 2 and argv[1].split('.')[-1] == 'yml':
+        DRAM.clear()
+        DRAM.update(read_specs())
 
     elif num_args > 1:
         # incorrect value, or show help
@@ -58,7 +63,7 @@ def check_params():
         \nWARNING:
         * Every value must be positive pair integer
         * DRAM capacity must be equal to total chips capacity"""
-        sys.exit(help_string)
+        exit(help_string)
 
 
 def ok_specs(DRAM=DRAM):
@@ -168,11 +173,15 @@ def read_memory(path):
     memory.closed
 
 
-def read_specs(specs_file):
-    with open(specs_file, 'r') as specs:
-        for line in [line.split() for line in specs]:
-            print(line)
+def read_specs(path='specs.yml'):
+    dram = None
+    with open(path, 'r') as specs:
+        data = load(specs)
+        # we expect just one dram item in file
+        dram = [data[item] for item in data][0]
+
     specs.close
+    return dram
 
 
 if __name__ == '__main__':
