@@ -3,9 +3,9 @@
 class Chip(object):
     def __init__(self, capacity=0, rows=2, columns=2, banks=1):
         self.__capacity = positive(capacity)
-        self.__banks = positive(banks)
         self.__rows = positive(pair(rows))
         self.__columns = positive(pair(columns))
+        self.__banks = [[False for i in range(self.__rows)] for i in range(banks)] 
 
 
     def __repr__(self):
