@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
 from sys import argv, exit
-from math import log2
 from yaml import load
+from math import log2, ceil
 from Chip import *
 
 
@@ -16,14 +16,14 @@ TIMES = {
 # testing DRAM
 DRAM = {
     'chips': {
-        'number': 2,
+        'number': 4,
         'capacity': 512, #MB
         'rows': 2,
         'banks': 8,
         'columns': 6
         },
     'times': TIMES,
-    'capacity': 1 
+    'capacity': 2 
     }
 
 # store the memory content provided by the simplescalar
@@ -117,6 +117,28 @@ def ok_specs(DRAM=DRAM):
     return message is None, message
 
 
+def bit_reading():
+    """
+    """
+    
+    # bit stream
+    bit_stream = MEMORY_CONTENT[1][2:] # remove 2 first characters
+    
+    # log2([row,chip,bank,column])
+    dc = DRAM['chips']
+    rcbc = list(map(lambda x: ceil(log2(x)), [dc['rows'],dc['number'],dc['banks'],dc['columns']] ))
+    
+    # now corresponding bits for [row,chip,bank,columns]
+    bits = []
+    for e in rcbc:
+        # following the MSB strategy
+        bits.append(bit_stream[:e]) # get the first corresponding bits
+        bit_stream = bit_stream[e:] # update the list, get the remainings
+    
+    # transform list from binary to integer and return it unpacked
+    return list(map(lambda x: int(x,2), bits))[::1]
+
+
 def bit_transform(decimal_stream):
     """Returns truncated binary value for the decimal parameter
     
@@ -190,5 +212,8 @@ if __name__ == '__main__':
     ok_condition, message = ok_specs()
     if ok_condition:
         print("Memory content: {mc}\nDRAM {d}".format(mc=MEMORY_CONTENT, d=DRAM))
+        row,chip,column,bank = bit_reading()
+        chips = create_chips()
+        #access to chip
     else:
         sys.exit(message)
