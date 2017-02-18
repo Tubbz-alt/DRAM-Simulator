@@ -6,7 +6,17 @@ from time import sleep
 from random import choice
 
 
-def create_file():
+filename = 'memory_content.txt'
+
+while True:
+    while exists(filename):
+        print("Wait for it...")
+        sleep(1)
+        
+    if exists('signal'):
+        print("Deleting signal file")
+        remove('signal')
+        
     print("Read random line from backup file")
     random_line = ""
     with open('backup_memory.txt', 'r') as memory:
@@ -18,23 +28,9 @@ def create_file():
             random_line += a+" "
         random_line+"\n"
     memory.close
-            
-    print("Creating memory file")
-    with open(filename, 'w') as f:
-        f.write(random_line)
-    f.close
-
-filename = 'memory_content.txt'
-
-while True:
-    while exists(filename):
-        print("Wait for it...")
-        sleep(1)
-        
-    if exists('signal') and not exists(filename):
-        print("Deleting signal file")
-        remove('signal')
-        create_file()
-    else:
-        # bootstrap the thing
-        create_file()
+    
+    if not exists(filename):
+        print("Creating memory file")
+        with open(filename, 'w') as f:
+            f.write(random_line)
+        f.close
