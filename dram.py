@@ -3,6 +3,8 @@
 from sys import argv, exit
 from yaml import load
 from math import log2, ceil
+from os import remove
+from time import sleep
 from Chip import *
 
 
@@ -13,14 +15,19 @@ TIMES = {
     'CL': 1 # column latency
 }
 
+# Statistics
+STATISTICS = {
+    'latency': 0
+}
+
 # testing DRAM
 DRAM = {
     'chips': {
         'number': 4,
         'capacity': 512, #MB
-        'rows': 2,
+        'rows': 20,
         'banks': 8,
-        'columns': 6
+        'columns': 20
         },
     'times': TIMES,
     'capacity': 2 
@@ -136,40 +143,7 @@ def bit_reading():
         bit_stream = bit_stream[e:] # update the list, get the remainings
     
     # transform list from binary to integer and return it unpacked
-    return list(map(lambda x: int(x,2), bits))[::1]
-
-
-def bit_transform(decimal_stream):
-    """Returns truncated binary value for the decimal parameter
-    
-    Gets the memory address and returns a suitable binary string according
-    to the number of bits needed to represent the DRAM capacity (bit length)
-    If bit length is > address length then stuff with 0s in MSB, 
-    if not, truncate the memory address to the bit length 
-
-    Parameters
-    decimal_stream: str
-        A decimal value
-
-    Returns
-    String with the binary value truncated
-    """
-
-    # first, we need to transform it to a true bit stream
-    # and remove '0b' from string in order to work better
-    bit_stream = bin(int(decimal_stream))[2:]
-
-    address_length = len(bit_stream)
-
-    """
-    we will need the total number of bits needed to represent the dram total quantity
-        log2(DRAM capacity in mb) + 20
-    Example:
-        log2(1GB) = log2(1024) = 1; 1 + 20 = 30 bits needed to represent 1GB
-    """
-    bit_length = int(log2(DRAM['capacity'] * 1024) + 20)
-
-    return '0b' + str('0' * (bit_length - address_length) + bit_stream if bit_length > address_length else bit_stream[-bit_length:])
+    return list(map(lambda x: int(x,2), bits))
 
 
 def read_memory(path):
@@ -179,20 +153,61 @@ def read_memory(path):
     path: str
         file where the memory stuff is stored
     """
+    
+    def bit_transform(decimal_stream):
+        """Returns truncated binary value for the decimal parameter
+        
+        Gets the memory address and returns a suitable binary string according
+        to the number of bits needed to represent the DRAM capacity (bit length)
+        If bit length is > address length then stuff with 0s in MSB, 
+        if not, truncate the memory address to the bit length 
 
-    with open(path, 'r') as memory:
-        # read line by line the given file and split the
-        # line in order to get the words
-        for line in [line.split() for line in memory]:
-            # treat data
-            mode = line[0]
-            address = bit_transform(line[1])
-            now = line[2]
-            MEMORY_CONTENT.append(mode)
-            MEMORY_CONTENT.append(address)
-            MEMORY_CONTENT.append(now)
+        Parameters
+        decimal_stream: str
+            A decimal value
 
-    memory.closed
+        Returns
+        String with the binary value truncated
+        """
+
+        # first, we need to transform it to a true bit stream
+        # and remove '0b' from string in order to work better
+        bit_stream = bin(int(decimal_stream))[2:]
+
+        address_length = len(bit_stream)
+
+        """
+        we will need the total number of bits needed to represent the dram total quantity
+            log2(DRAM capacity in mb) + 20
+        Example:
+            log2(1GB) = log2(1024) = 1; 1 + 20 = 30 bits needed to represent 1GB
+        """
+        bit_length = int(log2(DRAM['capacity'] * 1024) + 20)
+
+        return '0b' + str('0' * (bit_length - address_length) + bit_stream if bit_length > address_length else bit_stream[-bit_length:])
+
+
+    try:
+        with open(path, 'r') as memory:
+            # read line by line the given file and split the
+            # line in order to get the words
+            for line in [line.split() for line in memory]:
+                # treat data
+                mode = line[0]
+                address = bit_transform(line[1])
+                now = line[2]
+                MEMORY_CONTENT.clear()
+                MEMORY_CONTENT.append(mode)
+                MEMORY_CONTENT.append(address)
+                MEMORY_CONTENT.append(now)
+
+        memory.closed
+        # delete after reading
+        remove(path)
+    except FileNotFoundError:
+        print("Waiting for file to be created")
+        sleep(1)
+        read_memory(path)
 
 
 def read_specs(path='specs.yml'):
@@ -207,13 +222,53 @@ def read_specs(path='specs.yml'):
 
 
 if __name__ == '__main__':
+    
     check_params()
-    read_memory('memory_content.txt')
     ok_condition, message = ok_specs()
     if ok_condition:
-        print("Memory content: {mc}\nDRAM {d}".format(mc=MEMORY_CONTENT, d=DRAM))
-        row,chip,column,bank = bit_reading()
-        chips = create_chips()
-        #access to chip
+        print("Creating DRAM {d}\n".format(d=DRAM))
+        # create chips
+        chips = []
+        DC = DRAM['chips']
+        for _ in range(DC['number']):
+            chips.append(Chip(DC['capacity'],DC['rows'],DC['columns'],DC['banks']))
+        
+        while True:
+            read_memory('memory_content.txt')
+            print("\n\n=======================\n")
+            print("Memory content: {mc}\n".format(mc=MEMORY_CONTENT))
+            # retrieve indexes
+            i_row,i_chip,i_bank,i_column = bit_reading()
+            print("Results from bit_reading() [row,chip,bank,column]: ",[i_row, i_chip, i_bank,i_column])
+            
+            # access selected chip
+            chip = chips[i_chip]
+            print("Selected chip: ",i_chip)
+            # access selected bank
+            bank = chip.banks[i_bank]
+            print("Selected bank: ",i_bank)
+            # access selected row
+            row = bank[i_row]
+            print("Selected row: ", i_row)
+            
+            # calculate timings
+            if row:
+                print("Same row")
+                STATISTICS['latency'] += TIMES['CL']
+            else:
+                # use any(): returns true if any value is true
+                if any(bank):
+                    print("Open row")
+                    STATISTICS['latency'] += sum(TIMES.values())
+                else:
+                    print("First access")
+                    STATISTICS['latency'] += (TIMES['RCD'] + TIMES['CL'])
+                bank[i_row] = True
+            
+            print(chip.banks)
+            print(STATISTICS)
+            
+            # signal
+            open('signal','w').close
     else:
         sys.exit(message)
