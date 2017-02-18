@@ -13,10 +13,6 @@ while True:
         print("Wait for it...")
         sleep(1)
         
-    if exists('signal'):
-        print("Deleting signal file")
-        remove('signal')
-        
     print("Read random line from backup file")
     random_line = ""
     with open('backup_memory.txt', 'r') as memory:
@@ -34,3 +30,8 @@ while True:
         with open(filename, 'w') as f:
             f.write(random_line)
         f.close
+    
+    # signal
+    if exists('signal'):
+        print("Deleting signal file")
+        remove('signal')
