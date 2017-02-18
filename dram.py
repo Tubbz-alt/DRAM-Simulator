@@ -128,7 +128,7 @@ def ok_specs(DRAM=DRAM):
         and pass from Bytes to KB dividing the product of rows, banks and columns by 1000
     """
     if (DC['capacity'] * 1000 != ((DC['rows'] * DC['banks'] * DC['columns']) / 1000)):
-        message = "ERROR: Chips capacity ({c}MB) not compatible with chip specs ({cs}GB)".format(c=chips_capacity, cs=DC['chips'])
+        message = "ERROR: Chips capacity ({c}MB) not compatible with chip specs ({cs})".format(c=chips_capacity, cs=DC['chips'])
 
     return message is None, message
 
