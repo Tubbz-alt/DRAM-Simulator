@@ -23,14 +23,14 @@ STATISTICS = {
 # testing DRAM
 DRAM = {
     'chips': {
-        'number': 4,
+        'number': 2,
         'capacity': 512, #MB
-        'rows': 20,
-        'banks': 8,
-        'columns': 20
+        'rows': 1000,
+        'banks': 16,
+        'columns': 32000 # Bytes
         },
     'times': TIMES,
-    'capacity': 2 
+    'capacity': 1 
     }
 
 # store the memory content provided by the simplescalar
@@ -116,16 +116,35 @@ def ok_specs(DRAM=DRAM):
     if not positive_integers(DRAM['times'].values()):
         message = "ERROR: Something in the DRAM times specification is wrong"
 
-    chips_capacity = DRAM['chips']['number'] * DRAM['chips']['capacity']
+    DC = DRAM['chips']
+    chips_capacity = DC['number'] * DC['capacity']
     # for the total chip capacity divide by 1024 to convert to GB
     if (DRAM['capacity'] != chips_capacity/1024):
         message = "ERROR: Chips capacity ({c}MB) not compatible with DRAM capacity ({d}GB)".format(c=chips_capacity, d=DRAM['capacity'])
+    
+    """
+    check if the given specs for the chip are correct for total capacity of chip
+        Pass chip capacity to KB by multiplying 1000 to MB 
+        and pass from Bytes to KB dividing the product of rows, banks and columns by 1000
+    """
+    if (DC['capacity'] * 1000 != ((DC['rows'] * DC['banks'] * DC['columns']) / 1000)):
+        message = "ERROR: Chips capacity ({c}MB) not compatible with chip specs ({cs}GB)".format(c=chips_capacity, cs=DC['chips'])
 
     return message is None, message
 
 
 def bit_reading():
-    """
+    """Returns the selected row, chip, bank and column from the 
+    MEMORY_CONTENT in integer values
+    
+    Gets how many bits are needed for represent the chip entities 
+        (row, chip number, banks and columns)
+    Selects that quantity in order from the MEMORY_CONTENT content, 
+    given us the bits needed for represent the entities and, finally, 
+    returns those values in integers in an ordered list for further treatment
+    
+    Returns
+    list: integer values from [row,chip,bank,column]
     """
     
     # bit stream
@@ -142,6 +161,7 @@ def bit_reading():
         bits.append(bit_stream[:e]) # get the first corresponding bits
         bit_stream = bit_stream[e:] # update the list, get the remainings
     
+    print("row: {0}\nchip: {1}\nbank: {2}\ncolumn: {3}\n".format(bits[0],bits[1],bits[2],bits[3]))
     # transform list from binary to integer and return it unpacked
     return list(map(lambda x: int(x,2), bits))
 
@@ -239,17 +259,14 @@ if __name__ == '__main__':
             print("Memory content: {mc}\n".format(mc=MEMORY_CONTENT))
             # retrieve indexes
             i_row,i_chip,i_bank,i_column = bit_reading()
-            print("Results from bit_reading() [row,chip,bank,column]: ",[i_row, i_chip, i_bank,i_column])
+            print("Selected row: {0}\nSelected chip: {1}\nSelected bank: {2}\nSelected column: {3}\n".format(i_row,i_chip,i_bank,i_column))
             
             # access selected chip
             chip = chips[i_chip]
-            print("Selected chip: ",i_chip)
             # access selected bank
             bank = chip.banks[i_bank]
-            print("Selected bank: ",i_bank)
             # access selected row
             row = bank[i_row]
-            print("Selected row: ", i_row)
             
             # calculate timings
             if row:
@@ -265,10 +282,9 @@ if __name__ == '__main__':
                     STATISTICS['latency'] += (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
-            print(chip.banks)
-            print(STATISTICS)
+            print(STATISTICS,"\n")
             
             # signal
             open('signal','w').close
     else:
-        sys.exit(message)
+        exit(message)
