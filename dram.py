@@ -15,9 +15,11 @@ TIMES = {
     'CL': 1 # column latency
 }
 
-# Statistics
-STATISTICS = {
-    'latency': 0
+# wait time
+WAIT = {
+    'latency': 0,
+    'transfer': 1,
+    'bus_free': 0, # initially 0, memory bus is free
 }
 
 # testing DRAM
@@ -241,6 +243,16 @@ def read_specs(path='specs.yml'):
     return dram
 
 
+def signal(total_wait):
+    """Makes a signal for the simulator
+    
+    Creates a file that indicates the total time for the last access
+    """
+    with open('signal','w') as s:
+        s.write(str(total_wait))
+    s.close
+
+
 if __name__ == '__main__':
     
     check_params()
@@ -257,6 +269,15 @@ if __name__ == '__main__':
             read_memory('memory_content.txt')
             print("\n\n=======================\n")
             print("Memory content: {mc}\n".format(mc=MEMORY_CONTENT))
+
+            # check timings
+            wait_time = 0
+            now_time = int(MEMORY_CONTENT[2])
+            if now_time < WAIT['bus_free']:
+                wait_time =  WAIT['bus_free'] - now_time
+                
+            print("Last now: {}\nNow: {}\nWait time will be: {}\n".format(WAIT['bus_free'],now_time,wait_time))
+            
             # retrieve indexes
             i_row,i_chip,i_bank,i_column = bit_reading()
             print("Selected row: {0}\nSelected chip: {1}\nSelected bank: {2}\nSelected column: {3}\n".format(i_row,i_chip,i_bank,i_column))
@@ -271,20 +292,26 @@ if __name__ == '__main__':
             # calculate timings
             if row:
                 print("Same row")
-                STATISTICS['latency'] += TIMES['CL']
+                WAIT['latency'] += TIMES['CL']
             else:
                 # use any(): returns true if any value is true
                 if any(bank):
                     print("Open row")
-                    STATISTICS['latency'] += sum(TIMES.values())
+                    WAIT['latency'] += sum(TIMES.values())
                 else:
                     print("First access")
-                    STATISTICS['latency'] += (TIMES['RCD'] + TIMES['CL'])
+                    WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
-            print(STATISTICS,"\n")
+            print(WAIT,"\n")
             
-            # signal
-            open('signal','w').close
+            total_time = sum([wait_time,WAIT['latency'],WAIT['transfer']])
+            # update bus free time
+            WAIT['bus_free'] = now_time + total_time
+            
+            # write signal file with the total_time
+            signal(total_time)
+            
+            
     else:
         exit(message)
