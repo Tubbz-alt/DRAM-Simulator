@@ -33,5 +33,8 @@ while True:
     
     # signal
     if exists('signal'):
+        with open('signal', 'r') as f:
+            print("Total wait it",f.read())
+        f.close
         print("Deleting signal file")
         remove('signal')
