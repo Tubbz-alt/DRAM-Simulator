@@ -18,12 +18,13 @@ TIMES = {
 # wait time
 WAIT = {
     'latency': 0,
-    'transfer': 1,
     'bus_free': 0, # initially 0, memory bus is free
 }
 
 # testing DRAM
 DRAM = {
+    'capacity': 1,
+    'clock': 4,
     'chips': {
         'number': 2,
         'capacity': 512, #MB
@@ -32,8 +33,7 @@ DRAM = {
         'columns': 32000 # Bytes
         },
     'times': TIMES,
-    'capacity': 1 
-    }
+}
 
 # store the memory content provided by the simplescalar
 MEMORY_CONTENT = []
@@ -114,9 +114,11 @@ def ok_specs(DRAM=DRAM):
     if not positive_integers(DRAM['chips'].values()):
         message = "ERROR: Something in the chip specification is wrong"
 
-    # check if DRAM has proper times specification
-    if not positive_integers(DRAM['times'].values()):
-        message = "ERROR: Something in the DRAM times specification is wrong"
+    # check if DRAM has proper specification
+    specs = list(DRAM['times'].values())
+    specs.append(DRAM['clock'])
+    if not positive_integers(specs):
+        message = "ERROR: Something in the DRAM specification is wrong"
 
     DC = DRAM['chips']
     chips_capacity = DC['number'] * DC['capacity']
@@ -130,7 +132,7 @@ def ok_specs(DRAM=DRAM):
         and pass from Bytes to KB dividing the product of rows, banks and columns by 1000
     """
     if (DC['capacity'] * 1000 != ((DC['rows'] * DC['banks'] * DC['columns']) / 1000)):
-        message = "ERROR: Chips capacity ({c}MB) not compatible with chip specs ({cs})".format(c=chips_capacity, cs=DC['chips'])
+        message = "ERROR: Chips capacity ({c}MB) not compatible with chip specs ({cs})".format(c=chips_capacity, cs=DC)
 
     return message is None, message
 
@@ -303,15 +305,16 @@ if __name__ == '__main__':
                     WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
-            print(WAIT,"\n")
-            
-            total_time = sum([wait_time,WAIT['latency'],WAIT['transfer']])
+            total_time = sum([wait_time,WAIT['latency']])
             # update bus free time
             WAIT['bus_free'] = now_time + total_time
             
+            # total time must be expressed in DRAM clocks
+            total_time *= DRAM['clock']
+            print("\nWait times: {}\nTotal time: {}\n".format(wait_time,total_time))
+            
             # write signal file with the total_time
             signal(total_time)
-            
             
     else:
         exit(message)
