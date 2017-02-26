@@ -305,11 +305,15 @@ if __name__ == '__main__':
                     WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
+            
+            # @TODO: Where does the transfer_time comes from?
+            #   Is it provided by the user?
+            #   Is it calculated from he DRAM clock cycles?
             total_time = sum([wait_time,WAIT['latency']])
             # update bus free time
             WAIT['bus_free'] = now_time + total_time
             
-            # total time must be expressed in DRAM clocks
+            # total time must be expressed in DRAM cycle period expressed in clock cycles
             total_time *= DRAM['clock']
             print("\nWait times: {}\nTotal time: {}\n".format(wait_time,total_time))
             
