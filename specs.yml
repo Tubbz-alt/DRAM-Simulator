@@ -1,4 +1,4 @@
-dram_1:
+dram:
     capacity: 1
     clock: 4
     chips:
