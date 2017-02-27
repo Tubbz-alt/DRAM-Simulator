@@ -3,9 +3,9 @@ dram:
     clock: 4
     chips:
         number: 2
-        banks: 1
-        rows: 1
-        columns: 1
+        banks: 16
+        rows: 1000
+        columns: 32000
         capacity: 512
     times:
         RP: 1
