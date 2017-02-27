@@ -152,7 +152,7 @@ def bit_reading():
     """
     
     # bit stream
-    bit_stream = MEMORY_CONTENT[1][2:] # remove 2 first characters
+    bit_stream = MEMORY_CONTENT[2][2:] # remove 2 first characters
     
     # log2([row,chip,bank,column])
     dc = DRAM['chips']
@@ -216,14 +216,11 @@ def read_memory(path):
             # read line by line the given file and split the
             # line in order to get the words
             for line in [line.split() for line in memory]:
-                # treat data
-                mode = line[0]
-                address = bit_transform(line[1])
-                now = line[2]
                 MEMORY_CONTENT.clear()
-                MEMORY_CONTENT.append(mode)
-                MEMORY_CONTENT.append(address)
-                MEMORY_CONTENT.append(now)
+                MEMORY_CONTENT.append(int(line[0])) # block size
+                MEMORY_CONTENT.append(line[1]) # mode
+                MEMORY_CONTENT.append(bit_transform(line[2])) # address
+                MEMORY_CONTENT.append(int(line[3])) # now
 
         memory.closed
         # delete after reading
@@ -274,7 +271,7 @@ if __name__ == '__main__':
 
             # check timings
             wait_time = 0
-            now_time = int(MEMORY_CONTENT[2])
+            now_time = MEMORY_CONTENT[3]
             if now_time < WAIT['bus_free']:
                 wait_time =  WAIT['bus_free'] - now_time
                 
@@ -305,11 +302,10 @@ if __name__ == '__main__':
                     WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
+            # block size / 8 = how many clock needed for dram
+            transfer_time = (MEMORY_CONTENT[0] / 8) * DRAM['clock']
             
-            # @TODO: Where does the transfer_time comes from?
-            #   Is it provided by the user?
-            #   Is it calculated from he DRAM clock cycles?
-            total_time = sum([wait_time,WAIT['latency']])
+            total_time = sum([wait_time,WAIT['latency'],transfer_time])
             # update bus free time
             WAIT['bus_free'] = now_time + total_time
             
