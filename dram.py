@@ -212,19 +212,29 @@ def read_memory(path):
 
 
     try:
+        halt = False
         with open(path, 'r') as memory:
             # read line by line the given file and split the
             # line in order to get the words
             for line in [line.split() for line in memory]:
-                MEMORY_CONTENT.clear()
-                MEMORY_CONTENT.append(int(line[0])) # block size
-                MEMORY_CONTENT.append(line[1]) # mode
-                MEMORY_CONTENT.append(bit_transform(line[2])) # address
-                MEMORY_CONTENT.append(int(line[3])) # now
+                
+                if line[0] != 'HALT':
+                    MEMORY_CONTENT.clear()
+                    MEMORY_CONTENT.append(int(line[0])) # block size
+                    MEMORY_CONTENT.append(line[1]) # mode
+                    MEMORY_CONTENT.append(bit_transform(line[2])) # address
+                    MEMORY_CONTENT.append(int(line[3])) # now
+                else:
+                    halt = True
 
         memory.closed
         # delete after reading
         remove(path)
+        
+        # halt condition means the simulation is over
+        if halt:
+            exit("HALT")
+            
     except FileNotFoundError:
         print("Waiting for file to be created")
         sleep(1)
