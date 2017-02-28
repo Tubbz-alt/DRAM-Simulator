@@ -13,13 +13,13 @@ TIMES = {
     'RP': 1, # row precharge (closing)
     'RCD': 1, # row to column delay
     'CL': 1 # column latency
-}
+    }
 
 # wait time
 WAIT = {
     'latency': 0,
     'bus_free': 0, # initially 0, memory bus is free
-}
+    }
 
 # testing DRAM
 DRAM = {
@@ -33,11 +33,20 @@ DRAM = {
         'columns': 32000 # Bytes
         },
     'times': TIMES,
-}
+    }
 
 # store the memory content provided by the simplescalar
 MEMORY_CONTENT = []
 
+# for statistics purposes. Average times
+STATISTICS = {
+    'num_access': 0,
+    'total': 0,
+    'wait': 0,
+    'latency': 0,
+    'transfer': 0,
+    'write': 0
+    }
 
 def check_params(DRAM=DRAM):
     """
@@ -233,6 +242,8 @@ def read_memory(path):
         
         # halt condition means the simulation is over
         if halt:
+            # print statistics results
+            print_statistics()
             exit("HALT")
             
     except FileNotFoundError:
@@ -250,6 +261,30 @@ def read_specs(path='specs.yml'):
 
     specs.close
     return dram
+
+
+def update_statistics(total, wait, latency, transfer, ST=STATISTICS):
+    """Updates STATISTICS dictionary with the given times
+
+    Parameters:
+    The times
+    """
+    # account the access
+    ST['num_access'] += 1
+    a = ST['num_access']
+
+    #@HACKME: Do it in a more pythonic way
+    ST['total'] += (total / a)
+    ST['wait'] += (wait / a)
+    ST['latency'] += (latency / a)
+    ST['transfer'] += (transfer / a)
+
+
+def print_statistics(STATISTICS=STATISTICS):
+    with open('statistics.txt','w') as s:
+        for key, value in STATISTICS.items():
+            s.write(key + ": " + str(value) + "\n")
+    s.close
 
 
 def signal(total_wait):
@@ -276,6 +311,7 @@ if __name__ == '__main__':
         
         while True:
             read_memory('memory_content.txt')
+
             print("\n\n=======================\n")
             print("Memory content: {mc}\n".format(mc=MEMORY_CONTENT))
 
@@ -312,16 +348,20 @@ if __name__ == '__main__':
                     WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
+            latency_time = WAIT['latency']
+
             # block size / 8 = how many clock needed for dram
             transfer_time = (MEMORY_CONTENT[0] / 8) * DRAM['clock']
             
-            total_time = sum([wait_time,WAIT['latency'],transfer_time])
+            total_time = sum([wait_time,latency_time,transfer_time])
             # update bus free time
             WAIT['bus_free'] = now_time + total_time
             
             # total time must be expressed in DRAM cycle period expressed in clock cycles
             total_time *= DRAM['clock']
             print("\nWait times: {}\nTotal time: {}\n".format(wait_time,total_time))
+
+            update_statistics(total_time, wait_time, latency_time, transfer_time)
             
             # write signal file with the total_time
             signal(total_time)
