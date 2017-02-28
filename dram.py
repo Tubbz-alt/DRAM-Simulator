@@ -236,7 +236,7 @@ def read_memory(path):
             exit("HALT")
             
     except FileNotFoundError:
-        print("Waiting for file to be created")
+        print("Waiting for memory content")
         sleep(1)
         read_memory(path)
 
