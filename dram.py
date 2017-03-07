@@ -45,7 +45,9 @@ STATISTICS = {
     'wait': 0,
     'latency': 0,
     'transfer': 0,
-    'write': 0
+    'write': 0,
+    'page_hits': 0,
+    'page_misses': 0,
     }
 
 def check_params(DRAM=DRAM):
@@ -281,9 +283,17 @@ def update_statistics(total, wait, latency, transfer, ST=STATISTICS):
 
 
 def print_statistics(STATISTICS=STATISTICS):
+    aux = STATISTICS['page_hits'] + STATISTICS['page_misses']
+    # open page hit probability = open page hits / (open page hits + open page misses)
+    p_page_hit = STATISTICS['page_hits'] / aux
+    # open page miss probability = open page misses / (open page hits + open page misses)
+    p_page_miss = STATISTICS['page_misses'] / aux
+    
     with open('statistics.txt','w') as s:
         for key, value in STATISTICS.items():
             s.write(key + ": " + str(value) + "\n")
+        s.write("P(page hit): " + str(p_page_hit) + "\n")
+        s.write("P(page miss): " + str(p_page_miss) + "\n")
     s.close
 
 
@@ -338,11 +348,15 @@ if __name__ == '__main__':
             if row:
                 print("Same row")
                 WAIT['latency'] += TIMES['CL']
+                # it means we have a page-hit
+                STATISTICS['page_hits'] += 1
             else:
                 # use any(): returns true if any value is true
                 if any(bank):
                     print("Open row")
                     WAIT['latency'] += sum(TIMES.values())
+                    # page miss
+                    STATISTICS['page_misses'] += 1
                 else:
                     print("First access")
                     WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
