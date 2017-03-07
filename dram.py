@@ -12,7 +12,8 @@ from Chip import *
 TIMES = {
     'RP': 1, # row precharge (closing)
     'RCD': 1, # row to column delay
-    'CL': 1 # column latency
+    'CL': 1, # column latency
+    'WR': 1 # write recovery time for writing mode
     }
 
 # wait time
@@ -354,7 +355,7 @@ if __name__ == '__main__':
                 # use any(): returns true if any value is true
                 if any(bank):
                     print("Open row")
-                    WAIT['latency'] += sum(TIMES.values())
+                    WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'] + TIMES['RP'])
                     # page miss
                     STATISTICS['page_misses'] += 1
                 else:
@@ -368,6 +369,12 @@ if __name__ == '__main__':
             transfer_time = (MEMORY_CONTENT[0] / 8) * DRAM['clock']
             
             total_time = sum([wait_time,latency_time,transfer_time])
+            
+            # check the mode, if we are writting we need to add a new time
+            print("Mode is: {0}".format(MEMORY_CONTENT[1]))
+            if MEMORY_CONTENT[1] == 'w':
+                total_time += TIMES['WR']
+            
             # update bus free time
             WAIT['bus_free'] = now_time + total_time
             

@@ -11,3 +11,4 @@ dram:
         RP: 1
         RCD: 1
         CL: 1
+        WR: 1
