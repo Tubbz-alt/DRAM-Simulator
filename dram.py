@@ -245,8 +245,10 @@ def read_memory(path):
         
         # halt condition means the simulation is over
         if halt:
-            # print statistics results
-            print_statistics()
+            # check if the statistics dictionary is ready
+            if any(STATISTICS.values()):
+                print_statistics()
+                
             exit("HALT")
             
     except FileNotFoundError:
@@ -276,7 +278,6 @@ def update_statistics(total, wait, latency, transfer, ST=STATISTICS):
     ST['num_access'] += 1
     a = ST['num_access']
 
-    #@HACKME: Do it in a more pythonic way
     ST['total'] += (total / a)
     ST['wait'] += (wait / a)
     ST['latency'] += (latency / a)
@@ -284,6 +285,15 @@ def update_statistics(total, wait, latency, transfer, ST=STATISTICS):
 
 
 def print_statistics(STATISTICS=STATISTICS):
+    
+    num_access = STATISTICS['num_access']
+    
+    # average values
+    STATISTICS['wait'] /= num_access
+    STATISTICS['latency'] /= num_access
+    STATISTICS['transfer'] /= num_access
+    STATISTICS['total'] /= num_access
+    
     aux = STATISTICS['page_hits'] + STATISTICS['page_misses']
     # open page hit probability = open page hits / (open page hits + open page misses)
     p_page_hit = STATISTICS['page_hits'] / aux
@@ -320,6 +330,7 @@ if __name__ == '__main__':
         for _ in range(DC['number']):
             chips.append(Chip(DC['capacity'],DC['rows'],DC['columns'],DC['banks']))
         
+        processor_clock = DRAM['clock'] # for further time transformations
         while True:
             read_memory('memory_content.txt')
 
@@ -330,7 +341,8 @@ if __name__ == '__main__':
             wait_time = 0
             now_time = MEMORY_CONTENT[3]
             if now_time < WAIT['bus_free']:
-                wait_time =  WAIT['bus_free'] - now_time
+                # this time is already in clock cycles
+                wait_time = WAIT['bus_free'] - now_time
                 
             print("Last now: {}\nNow: {}\nWait time will be: {}\n".format(WAIT['bus_free'],now_time,wait_time))
             
@@ -348,40 +360,36 @@ if __name__ == '__main__':
             # calculate timings
             if row:
                 print("Same row")
-                WAIT['latency'] += TIMES['CL']
+                WAIT['latency'] = TIMES['CL']
                 # it means we have a page-hit
                 STATISTICS['page_hits'] += 1
             else:
                 # use any(): returns true if any value is true
                 if any(bank):
                     print("Open row")
-                    WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'] + TIMES['RP'])
+                    WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'] + TIMES['RP'])
                     # page miss
                     STATISTICS['page_misses'] += 1
                 else:
                     print("First access")
-                    WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
+                    WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
-            latency_time = WAIT['latency']
-
-            # block size / 8 = how many clock needed for dram
-            transfer_time = (MEMORY_CONTENT[0] / 8) * DRAM['clock']
+            latency_time = WAIT['latency'] * processor_clock
             
+            # block size / 8 = how many clock needed for dram
+            transfer_time = (MEMORY_CONTENT[0] / 8) * processor_clock
             total_time = sum([wait_time,latency_time,transfer_time])
             
-            # check the mode, if we are writting we need to add a new time
+            # check the mode, if we are writing we need to add a new time
             print("Mode is: {0}".format(MEMORY_CONTENT[1]))
             if MEMORY_CONTENT[1] == 'w':
-                total_time += TIMES['WR']
+                total_time += (TIMES['WR'] * processor_clock)
+                STATISTICS['write'] += 1
             
             # update bus free time
             WAIT['bus_free'] = now_time + total_time
             
-            # total time must be expressed in DRAM cycle period expressed in clock cycles
-            total_time *= DRAM['clock']
-            print("\nWait times: {}\nTotal time: {}\n".format(wait_time,total_time))
-
             update_statistics(total_time, wait_time, latency_time, transfer_time)
             
             # write signal file with the total_time
