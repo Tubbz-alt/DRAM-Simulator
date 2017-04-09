@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 from sys import argv, exit
 from yaml import load
 from math import log2, ceil
