@@ -267,20 +267,19 @@ def read_specs(path='specs.yml'):
     return dram
 
 
-def update_statistics(total, wait, latency, transfer, ST=STATISTICS):
+def update_statistics(total, wait, latency, transfer, STATISTICS=STATISTICS):
     """Updates STATISTICS dictionary with the given times
     
     Parameters:
     The times
     """
     # account the access
-    ST['num_access'] += 1
-    a = ST['num_access']
-    
-    ST['total'] += (total / a)
-    ST['wait'] += (wait / a)
-    ST['latency'] += (latency / a)
-    ST['transfer'] += (transfer / a)
+    STATISTICS['num_access'] += 1
+    # update the statistics values
+    STATISTICS['total'] += total
+    STATISTICS['wait'] += wait
+    STATISTICS['latency'] += latency
+    STATISTICS['transfer'] += transfer
 
 
 def print_statistics(STATISTICS=STATISTICS):
