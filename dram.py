@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-
 from sys import argv, exit
 from yaml import load
 from math import log2, ceil
@@ -12,7 +11,8 @@ from Chip import *
 TIMES = {
     'RP': 1, # row precharge (closing)
     'RCD': 1, # row to column delay
-    'CL': 1 # column latency
+    'CL': 1, # column latency
+    'WR': 1 # write recovery time for writing mode
     }
 
 # wait time
@@ -45,16 +45,18 @@ STATISTICS = {
     'wait': 0,
     'latency': 0,
     'transfer': 0,
-    'write': 0
+    'write': 0,
+    'page_hits': 0,
+    'page_misses': 0,
     }
 
 def check_params(DRAM=DRAM):
     """
     # ./dram <dram_capacity> <chip number> <chip_capacity> <rows> <columns> <banks>
     """
-
+    
     num_args = len(argv)
-
+    
     if num_args == 7:
         DRAM['capacity'] = int(argv[1])
         chips = int(argv[2])
@@ -64,11 +66,11 @@ def check_params(DRAM=DRAM):
             DRAM['chips']['rows'] = int(argv[4])
             DRAM['chips']['columns'] = int(argv[5])
             DRAM['chips']['banks'] = int(argv[6])
-
+            
     elif num_args == 2 and argv[1].split('.')[-1] == 'yml':
         DRAM.clear()
         DRAM.update(read_specs())
-
+        
     elif num_args > 1:
         # incorrect value, or show help
         help_string = """Usage: ./dram.py <dram_capacity> <number_chips> <chip_capacity> <rows> <columns> <banks>
@@ -86,21 +88,21 @@ def check_params(DRAM=DRAM):
 
 def ok_specs(DRAM=DRAM):
     """Check the DRAM total capacity while creating the chips
-
+    
     Of a given DRAM dictionary checks if the specs are correct comparing
     the total DRAM capacity with the total chips' capacity.
-
+    
     DRAM: Optional, Dictionary
         The DRAM specification
-
+        
     Returns
     boolean
         Wheter the chips capacity equals total dram capacity
     """
-
+    
     def positive_integers(elements):
         """Returns if all given values of a list are of integer type
-
+        
         maps a list of elements to its element's type: [type, type, ...]
         the filter the mapped list to get if every element is equal to type(1) (which is int)
         if the length of the filter type it's equal to length of the first list, then
@@ -115,20 +117,20 @@ def ok_specs(DRAM=DRAM):
         """
         types = list(map(lambda x: type(x) is type(1) and x > 0, elements))
         return len(list(filter(lambda x: x is True, types))) == len(types)
-
-
+        
+        
     message = None
 
     # check if the DRAM has a proper specification
     if not positive_integers(DRAM['chips'].values()):
         message = "ERROR: Something in the chip specification is wrong"
-
+        
     # check if DRAM has proper specification
     specs = list(DRAM['times'].values())
     specs.append(DRAM['clock'])
     if not positive_integers(specs):
         message = "ERROR: Something in the DRAM specification is wrong"
-
+        
     DC = DRAM['chips']
     chips_capacity = DC['number'] * DC['capacity']
     # for the total chip capacity divide by 1024 to convert to GB
@@ -181,7 +183,7 @@ def bit_reading():
 
 def read_memory(path):
     """Reads memory stuff from path file
-
+    
     Parameters
     path: str
         file where the memory stuff is stored
@@ -194,21 +196,21 @@ def read_memory(path):
         to the number of bits needed to represent the DRAM capacity (bit length)
         If bit length is > address length then stuff with 0s in MSB, 
         if not, truncate the memory address to the bit length 
-
+        
         Parameters
         decimal_stream: str
             A decimal value
-
+            
         Returns
         String with the binary value truncated
         """
-
+        
         # first, we need to transform it to a true bit stream
         # and remove '0b' from string in order to work better
         bit_stream = bin(int(decimal_stream))[2:]
-
+        
         address_length = len(bit_stream)
-
+        
         """
         we will need the total number of bits needed to represent the dram total quantity
             log2(DRAM capacity in mb) + 20
@@ -216,7 +218,7 @@ def read_memory(path):
             log2(1GB) = log2(1024) = 1; 1 + 20 = 30 bits needed to represent 1GB
         """
         bit_length = int(log2(DRAM['capacity'] * 1024) + 20)
-
+        
         return '0b' + str('0' * (bit_length - address_length) + bit_stream if bit_length > address_length else bit_stream[-bit_length:])
 
 
@@ -235,15 +237,17 @@ def read_memory(path):
                     MEMORY_CONTENT.append(int(line[3])) # now
                 else:
                     halt = True
-
+                    
         memory.closed
         # delete after reading
         remove(path)
         
         # halt condition means the simulation is over
         if halt:
-            # print statistics results
-            print_statistics()
+            # check if the statistics dictionary is ready
+            if any(STATISTICS.values()):
+                print_statistics()
+                
             exit("HALT")
             
     except FileNotFoundError:
@@ -258,32 +262,47 @@ def read_specs(path='specs.yml'):
         data = load(specs)
         # we expect just one dram item in file
         dram = [data[item] for item in data][0]
-
+        
     specs.close
     return dram
 
 
-def update_statistics(total, wait, latency, transfer, ST=STATISTICS):
+def update_statistics(total, wait, latency, transfer, STATISTICS=STATISTICS):
     """Updates STATISTICS dictionary with the given times
-
+    
     Parameters:
     The times
     """
     # account the access
-    ST['num_access'] += 1
-    a = ST['num_access']
-
-    #@HACKME: Do it in a more pythonic way
-    ST['total'] += (total / a)
-    ST['wait'] += (wait / a)
-    ST['latency'] += (latency / a)
-    ST['transfer'] += (transfer / a)
+    STATISTICS['num_access'] += 1
+    # update the statistics values
+    STATISTICS['total'] += total
+    STATISTICS['wait'] += wait
+    STATISTICS['latency'] += latency
+    STATISTICS['transfer'] += transfer
 
 
 def print_statistics(STATISTICS=STATISTICS):
+    
+    num_access = STATISTICS['num_access']
+    
+    # average values
+    STATISTICS['wait'] /= num_access
+    STATISTICS['latency'] /= num_access
+    STATISTICS['transfer'] /= num_access
+    STATISTICS['total'] /= num_access
+    
+    aux = STATISTICS['page_hits'] + STATISTICS['page_misses']
+    # open page hit probability = open page hits / (open page hits + open page misses)
+    p_page_hit = STATISTICS['page_hits'] / aux
+    # open page miss probability = open page misses / (open page hits + open page misses)
+    p_page_miss = STATISTICS['page_misses'] / aux
+    
     with open('statistics.txt','w') as s:
         for key, value in STATISTICS.items():
             s.write(key + ": " + str(value) + "\n")
+        s.write("P(page hit): " + str(p_page_hit) + "\n")
+        s.write("P(page miss): " + str(p_page_miss) + "\n")
     s.close
 
 
@@ -309,6 +328,7 @@ if __name__ == '__main__':
         for _ in range(DC['number']):
             chips.append(Chip(DC['capacity'],DC['rows'],DC['columns'],DC['banks']))
         
+        processor_clock = DRAM['clock'] # for further time transformations
         while True:
             read_memory('memory_content.txt')
 
@@ -319,7 +339,8 @@ if __name__ == '__main__':
             wait_time = 0
             now_time = MEMORY_CONTENT[3]
             if now_time < WAIT['bus_free']:
-                wait_time =  WAIT['bus_free'] - now_time
+                # this time is already in clock cycles
+                wait_time = WAIT['bus_free'] - now_time
                 
             print("Last now: {}\nNow: {}\nWait time will be: {}\n".format(WAIT['bus_free'],now_time,wait_time))
             
@@ -337,30 +358,36 @@ if __name__ == '__main__':
             # calculate timings
             if row:
                 print("Same row")
-                WAIT['latency'] += TIMES['CL']
+                WAIT['latency'] = TIMES['CL']
+                # it means we have a page-hit
+                STATISTICS['page_hits'] += 1
             else:
                 # use any(): returns true if any value is true
                 if any(bank):
                     print("Open row")
-                    WAIT['latency'] += sum(TIMES.values())
+                    WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'] + TIMES['RP'])
+                    # page miss
+                    STATISTICS['page_misses'] += 1
                 else:
                     print("First access")
-                    WAIT['latency'] += (TIMES['RCD'] + TIMES['CL'])
+                    WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'])
                 bank[i_row] = True
             
-            latency_time = WAIT['latency']
-
-            # block size / 8 = how many clock needed for dram
-            transfer_time = (MEMORY_CONTENT[0] / 8) * DRAM['clock']
+            latency_time = WAIT['latency'] * processor_clock
             
+            # block size / 8 = how many clock needed for dram
+            transfer_time = (MEMORY_CONTENT[0] / 8) * processor_clock
             total_time = sum([wait_time,latency_time,transfer_time])
+            
+            # check the mode, if we are writing we need to add a new time
+            print("Mode is: {0}".format(MEMORY_CONTENT[1]))
+            if MEMORY_CONTENT[1] == 'w':
+                total_time += (TIMES['WR'] * processor_clock)
+                STATISTICS['write'] += 1
+            
             # update bus free time
             WAIT['bus_free'] = now_time + total_time
             
-            # total time must be expressed in DRAM cycle period expressed in clock cycles
-            total_time *= DRAM['clock']
-            print("\nWait times: {}\nTotal time: {}\n".format(wait_time,total_time))
-
             update_statistics(total_time, wait_time, latency_time, transfer_time)
             
             # write signal file with the total_time
