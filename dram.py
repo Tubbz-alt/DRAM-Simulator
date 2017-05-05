@@ -3,8 +3,12 @@ from sys import argv, exit
 from yaml import load
 from math import log2, ceil
 from os import remove
+from os.path import isfile
 from time import sleep
 from Chip import *
+
+
+SLEEP = 1000 #useconds
 
 
 # DRAM specs
@@ -49,6 +53,10 @@ STATISTICS = {
     'page_hits': 0,
     'page_misses': 0,
     }
+
+
+usleep = lambda x: sleep(x/1000000.0)
+
 
 def check_params(DRAM=DRAM):
     """
@@ -176,7 +184,7 @@ def bit_reading():
         bits.append(bit_stream[:e]) # get the first corresponding bits
         bit_stream = bit_stream[e:] # update the list, get the remainings
     
-    print("row: {0}\nchip: {1}\nbank: {2}\ncolumn: {3}\n".format(bits[0],bits[1],bits[2],bits[3]))
+    # print("row: {0}\nchip: {1}\nbank: {2}\ncolumn: {3}\n".format(bits[0],bits[1],bits[2],bits[3]))
     # transform list from binary to integer and return it unpacked
     return list(map(lambda x: int(x,2), bits))
 
@@ -222,39 +230,37 @@ def read_memory(path):
         return '0b' + str('0' * (bit_length - address_length) + bit_stream if bit_length > address_length else bit_stream[-bit_length:])
 
 
-    try:
-        halt = False
-        with open(path, 'r') as memory:
-            # read line by line the given file and split the
-            # line in order to get the words
-            for line in [line.split() for line in memory]:
-                
-                if line[0] != 'HALT':
-                    MEMORY_CONTENT.clear()
-                    MEMORY_CONTENT.append(int(line[0])) # block size
-                    MEMORY_CONTENT.append(line[1]) # mode
-                    MEMORY_CONTENT.append(bit_transform(line[2])) # address
-                    MEMORY_CONTENT.append(int(line[3])) # now
-                else:
-                    halt = True
-                    
-        memory.closed
-        # delete after reading
-        remove(path)
-        
-        # halt condition means the simulation is over
-        if halt:
-            # check if the statistics dictionary is ready
-            if any(STATISTICS.values()):
-                print_statistics()
-                
-            exit("HALT")
-            
-    except FileNotFoundError:
-        print("Waiting for memory content")
-        sleep(1)
-        read_memory(path)
+    while not isfile(path):
+        # print("..")
+        usleep(SLEEP)
 
+    halt = False
+    with open(path, 'r') as memory:
+        # read line by line the given file and split the
+        # line in order to get the words
+        for line in [line.split() for line in memory]:
+            
+            if line[0] != 'HALT':
+                MEMORY_CONTENT.clear()
+                MEMORY_CONTENT.append(int(line[0])) # block size
+                MEMORY_CONTENT.append(line[1]) # mode
+                MEMORY_CONTENT.append(bit_transform(line[2])) # address
+                MEMORY_CONTENT.append(int(line[3])) # now
+            else:
+                halt = True
+                
+    memory.closed
+    # delete after reading
+    remove(path)
+    
+    # halt condition means the simulation is over
+    if halt:
+        # check if the statistics dictionary is ready
+        if any(STATISTICS.values()):
+            print_statistics()
+            
+        exit("HALT")
+            
 
 def read_specs(path='specs.yml'):
     dram = None
@@ -321,7 +327,7 @@ if __name__ == '__main__':
     check_params()
     ok_condition, message = ok_specs()
     if ok_condition:
-        print("Creating DRAM {d}\n".format(d=DRAM))
+        # print("Creating DRAM {d}\n".format(d=DRAM))
         # create chips
         chips = []
         DC = DRAM['chips']
@@ -329,69 +335,75 @@ if __name__ == '__main__':
             chips.append(Chip(DC['capacity'],DC['rows'],DC['columns'],DC['banks']))
         
         processor_clock = DRAM['clock'] # for further time transformations
-        while True:
-            read_memory('memory_content.txt')
+        try:
+            while True:
+                read_memory('memory_content.txt')
 
-            print("\n\n=======================\n")
-            print("Memory content: {mc}\n".format(mc=MEMORY_CONTENT))
+                # print("\n\n=======================\n")
+                # print("Memory content: {mc}\n".format(mc=MEMORY_CONTENT))
 
-            # check timings
-            wait_time = 0
-            now_time = MEMORY_CONTENT[3]
-            if now_time < WAIT['bus_free']:
-                # this time is already in clock cycles
-                wait_time = WAIT['bus_free'] - now_time
+                # check timings
+                wait_time = 0
+                now_time = MEMORY_CONTENT[3]
+                if now_time < WAIT['bus_free']:
+                    # this time is already in clock cycles
+                    wait_time = WAIT['bus_free'] - now_time
+                    
+                # print("Last now: {}\nNow: {}\nWait time will be: {}\n".format(WAIT['bus_free'],now_time,wait_time))
                 
-            print("Last now: {}\nNow: {}\nWait time will be: {}\n".format(WAIT['bus_free'],now_time,wait_time))
-            
-            # retrieve indexes
-            i_row,i_chip,i_bank,i_column = bit_reading()
-            print("Selected row: {0}\nSelected chip: {1}\nSelected bank: {2}\nSelected column: {3}\n".format(i_row,i_chip,i_bank,i_column))
-            
-            # access selected chip
-            chip = chips[i_chip]
-            # access selected bank
-            bank = chip.banks[i_bank]
-            # access selected row
-            row = bank[i_row]
-            
-            # calculate timings
-            if row:
-                print("Same row")
-                WAIT['latency'] = TIMES['CL']
-                # it means we have a page-hit
-                STATISTICS['page_hits'] += 1
-            else:
-                # use any(): returns true if any value is true
-                if any(bank):
-                    print("Open row")
-                    WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'] + TIMES['RP'])
-                    # page miss
-                    STATISTICS['page_misses'] += 1
+                # retrieve indexes
+                i_row,i_chip,i_bank,i_column = bit_reading()
+                # print("Selected row: {0}\nSelected chip: {1}\nSelected bank: {2}\nSelected column: {3}\n".format(i_row,i_chip,i_bank,i_column))
+                
+                # access selected chip
+                chip = chips[i_chip]
+                # access selected bank
+                bank = chip.banks[i_bank]
+                # access selected row
+                row = bank[i_row]
+                
+                # calculate timings
+                if row:
+                    # print("Same row")
+                    WAIT['latency'] = TIMES['CL']
+                    # it means we have a page-hit
+                    STATISTICS['page_hits'] += 1
                 else:
-                    print("First access")
-                    WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'])
-                bank[i_row] = True
-            
-            latency_time = WAIT['latency'] * processor_clock
-            
-            # block size / 8 = how many clock needed for dram
-            transfer_time = (MEMORY_CONTENT[0] / 8) * processor_clock
-            total_time = sum([wait_time,latency_time,transfer_time])
-            
-            # check the mode, if we are writing we need to add a new time
-            print("Mode is: {0}".format(MEMORY_CONTENT[1]))
-            if MEMORY_CONTENT[1] == 'w':
-                total_time += (TIMES['WR'] * processor_clock)
-                STATISTICS['write'] += 1
-            
-            # update bus free time
-            WAIT['bus_free'] = now_time + total_time
-            
-            update_statistics(total_time, wait_time, latency_time, transfer_time)
-            
-            # write signal file with the total_time
-            signal(total_time)
-            
+                    # use any(): returns true if any value is true
+                    if any(bank):
+                        # print("Open row")
+                        WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'] + TIMES['RP'])
+                        # page miss
+                        STATISTICS['page_misses'] += 1
+                    else:
+                        # print("First access")
+                        WAIT['latency'] = (TIMES['RCD'] + TIMES['CL'])
+                    bank[i_row] = True
+                
+                latency_time = WAIT['latency'] * processor_clock
+                
+                # block size / 8 = how many clock needed for dram
+                transfer_time = (MEMORY_CONTENT[0] / 8) * processor_clock
+                total_time = sum([wait_time,latency_time,transfer_time])
+                
+                # check the mode, if we are writing we need to add a new time
+                # print("Mode is: {0}".format(MEMORY_CONTENT[1]))
+                if MEMORY_CONTENT[1] == 'w':
+                    total_time += (TIMES['WR'] * processor_clock)
+                    STATISTICS['write'] += 1
+                
+                # update bus free time
+                WAIT['bus_free'] = now_time + total_time
+                
+                update_statistics(total_time, wait_time, latency_time, transfer_time)
+                
+                # write signal file with the total_time
+                signal(total_time)
+
+        except KeyboardInterrupt:
+            if any(STATISTICS.values()):
+                print_statistics()
+            exit("Execution was manually halted")
+
     else:
         exit(message)
