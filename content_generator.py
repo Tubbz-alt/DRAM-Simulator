@@ -4,7 +4,9 @@ Simulates writings from simplescalar to the memory content file
 
 Waits for dram simulator to delete the memory file.
 Uses backup_memory.txt file to get random lines that are true acceses from
-simplescalar and writes it to a file.
+simplescalar and writes it to a file. Therefore, backup_memory.txt should have
+something like: "64 r 536440832 39"
+
 Finally reads signal file and deletes it.
 
 This process is the same followed between simplescalar and the dram simulator

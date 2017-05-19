@@ -82,7 +82,6 @@ if __name__ == '__main__':
     try:
         while True:
             block_size, mode, address, now_time = read_memory()
-            
             address = bit_transform(address, DRAM['capacity'])
 
             #check timings
@@ -124,7 +123,7 @@ if __name__ == '__main__':
             #calculate timings
             latency_time = wait['latency'] * processor_clock
             
-            #block size / 8 = how many clock needed for dram
+            #block size / 8 = how many clocks needed for dram
             transfer_time = (block_size / 8) * processor_clock
             total_time = sum([wait_time, latency_time, transfer_time])
             

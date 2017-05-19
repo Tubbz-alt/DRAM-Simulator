@@ -38,3 +38,14 @@ A lot.
 * The `DRAM[capacity]` must be equal to `chips[capacity]` * `chips[number]`. This is the chips capacity per number of chips equals the total capacity of the DRAM.
 * The `chips[capacity]` in Bytes must be equal to the number of `chips[rows]` * `chips[banks]` * `chips[columns]` expressed in Bytes.
 * All given valuen must be positive and all `DRAM[chips]` values must be pair
+
+
+## Usage
+To use this DRAM simulator as a simulator for the simplescalar we must run the `dram.py` script in one process and another process should be the simplescalar itself.
+The simplescalar simulator will do its task (execute tests or benchmarks) and will write into a file called 'memory_content.txt' the next structure:
+```
+block_size mode address now_time
+```
+The dram script will process that data and return to simplescalar a 'signal' file with the total time of transfer time, latency time and wait of the simulated DRAM according to the given information by 'memory_content.txt'. 
+simplescalar will acknowledge the 'signal' file and continue writing into 'memory_content.txt' more data.
+After every file reading both programs delete the file they were reading from, simplescalar deletes signal and creates a memory_content.txt file every time and the dram script delete memory_content.txt and creates a signal file every time.
