@@ -1,10 +1,10 @@
 DRAM Simulator
 ===
 
-This is a simulator of a Dynamic random-access memory (DRAM) for the [simplescalar simulator](http://www.simplescalar.com/).
+This is a simulator of a dynamic random-access memory (DRAM) for the [simplescalar simulator](http://www.simplescalar.com/).
 
 ## Specs
-The simulator can have a YAML file (a file with `.yml` extension) as specs definition. The file must follow the next structure:
+The simulator has a file with specs definition. The file must follow the next structure:
 
 ```
 dram:
@@ -20,21 +20,14 @@ dram:
         RP: 1
         RCD: 1
         CL: 1
+    wait:
+        latency: 0
+        bus_free: 0
 ```
 _You can find this example in `specs.yml`._
 
-To execute the simulator with a specs file use `$ python dram.py specs.yml`.
+To execute the simulator with a diferent specs file use `$ python dram.py <path>`
 
-The simulator can also have terminal arguments as DRAM values following the next structure:
-```
-$ python dram.py <dram_capacity> <number_chips> <chip_capacity> <rows> <columns> <banks>
-    <dram_capacity>: (int) Total capacity of the DRAM expressed in GB
-    <chip_number>: (int) Number of chips of DRAM 
-    <chip_capacity>: (int) Capacity of the chip expressed in MB
-    <rows>: (int) Row number of the chip
-    <columns>: (int) Column number of the chip
-    <banks>: (int) Banks number of the chip
-```
 
 ### Restrictions
 A lot.
