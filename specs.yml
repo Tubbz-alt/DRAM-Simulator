@@ -12,3 +12,6 @@ dram:
         RCD: 1
         CL: 1
         WR: 1
+    wait:
+        latency: 0
+        bus_free: 0
