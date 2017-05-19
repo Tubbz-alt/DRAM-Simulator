@@ -12,14 +12,23 @@ Finally reads signal file and deletes it.
 This process is the same followed between simplescalar and the dram simulator
 """
 from os.path import exists
-from os import remove, argv
+from os import remove
+from sys import argv
 from time import sleep
 from random import choice
+
+
+def create_memory(filename, line):
+    print("Creating memory file")
+    with open(filename, 'w') as f:
+        f.write(line)
+    f.close
 
 
 filename = 'memory_content.txt'
 if len(argv) > 1:
     filename = argv[1]
+
 
 try:
     while True:
@@ -41,10 +50,7 @@ try:
         
         #put line into memory file
         if not exists(filename):
-            print("Creating memory file")
-            with open(filename, 'w') as f:
-                f.write(random_line)
-            f.close
+            create_memory(filename, random_line)
         
         # signal
         if exists('signal'):
@@ -54,5 +60,5 @@ try:
             print("Deleting signal file")
             remove('signal')
 except KeyboardInterrupt:
-    create_memory(filename,"HALT\n")
+    create_memory(filename, "HALT\n")
 
