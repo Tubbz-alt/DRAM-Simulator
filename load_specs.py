@@ -87,5 +87,5 @@ if __name__ == '__main__':
     from sys import argv
     
     filename = argv[1] if len(argv) > 1 else 'specs.yml'
-    load_dram(filename)
+    load_specs(filename)
 
