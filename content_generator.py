@@ -1,19 +1,23 @@
 #!/usr/bin/python3
+"""
+Simulates writings from simplescalar to the memory content file
 
+Waits for dram simulator to delete the memory file.
+Uses backup_memory.txt file to get random lines that are true acceses from
+simplescalar and writes it to a file.
+Finally reads signal file and deletes it.
+
+This process is the same followed between simplescalar and the dram simulator
+"""
 from os.path import exists
-from os import remove
+from os import remove, argv
 from time import sleep
 from random import choice
 
 
 filename = 'memory_content.txt'
-
-
-def create_memory(filename,content):
-    with open(filename, 'w') as f:
-        f.write(content)
-    f.close
-    
+if len(argv) > 1:
+    filename = argv[1]
 
 try:
     while True:
@@ -33,9 +37,12 @@ try:
             random_line+"\n"
         memory.close
         
+        #put line into memory file
         if not exists(filename):
             print("Creating memory file")
-            create_memory(filename,random_line)
+            with open(filename, 'w') as f:
+                f.write(random_line)
+            f.close
         
         # signal
         if exists('signal'):
